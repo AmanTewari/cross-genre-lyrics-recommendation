@@ -7,3 +7,5 @@ Templates/
 *.template
 *.tmpl
 *.tpl
+
+data/raw/
