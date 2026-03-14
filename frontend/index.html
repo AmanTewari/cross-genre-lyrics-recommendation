@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+<title>Lyrics Music Recommendation</title>
+
+<link rel="stylesheet" href="style.css">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h4>Lyrics-Based Music Recommendation System</h4>
+<p>Discover songs with similar lyrical patterns</p>
+
+<ul class="tabs">
+
+<li class="tab col s6">
+<a class="active" href="#titleTab">Recommend by Song Title</a>
+</li>
+
+<li class="tab col s6">
+<a href="#lyricsTab">Recommend by Lyrics</a>
+</li>
+
+</ul>
+
+<div id="titleTab">
+
+<div class="input-field">
+
+<input id="songTitle" type="text">
+<label>Enter Song Title</label>
+
+</div>
+
+<button class="btn" onclick="recommendByTitle()">
+RECOMMEND SONGS
+</button>
+
+<div id="titleResults" class="resultBox"></div>
+
+</div>
+
+
+<div id="lyricsTab">
+
+<div class="input-field">
+
+<textarea id="lyricsInput" class="materialize-textarea"></textarea>
+<label>Paste Lyrics</label>
+
+</div>
+
+<button class="btn" onclick="recommendByLyrics()">
+FIND SIMILAR SONGS
+</button>
+
+<div id="lyricsResults" class="resultBox"></div>
+
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="app.js"></script>
+
+</body>
+
+</html>
