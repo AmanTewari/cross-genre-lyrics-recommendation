@@ -13,4 +13,5 @@ data/
 *.data
 *.db
 *.csv
-
+agents/
+*.agents
