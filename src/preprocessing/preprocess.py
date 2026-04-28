@@ -192,8 +192,8 @@ def clean_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     # Create another version of lyrics with everything lowercase and no punctuation
     # This helps detect duplicate songs even if the lyrics formatting is slightly different
     chunk['normalized_lyrics'] = chunk['lyrics'].str.lower()
-    chunk['normalized_lyrics'] = chunk['normalized_lyrics'].str.replace(r'[^\\w\\s]', ' ', regex=True)
-    chunk['normalized_lyrics'] = chunk['normalized_lyrics'].str.replace(r'\\s+', ' ', regex=True).str.strip()
+    chunk['normalized_lyrics'] = chunk['normalized_lyrics'].str.replace(r"[^\w\s]", ' ', regex=True)
+    chunk['normalized_lyrics'] = chunk['normalized_lyrics'].str.replace(r"\s+", ' ', regex=True).str.strip()
 
     # Drop rows that became empty after final lyrics normalization.
     chunk = chunk[chunk['normalized_lyrics'] != ''].copy()
@@ -285,7 +285,7 @@ def pass2_write_output(raw_csv: Path, out_csv: Path, chunk_size: int, usecols, l
         
         # Select only the columns we want in the final output (use normalized fields only)
         out = pd.DataFrame({
-            'id': chunk['id'],
+            'id': chunk['id'].astype(str),
             'title': chunk['normalized_title'],
             'artist': chunk['normalized_artist'],
             'lyrics': chunk['normalized_lyrics']
@@ -312,6 +312,15 @@ def run_pipeline(raw_csv: Path = RAW_CSV, out_csv: Path = OUT_CSV, chunk_size: i
 
     # Choose which columns to read from the raw file
     usecols = RAW_COLS
+
+    # Validate the raw CSV header contains the required columns before doing heavy work
+    try:
+        sample = pd.read_csv(raw_csv, nrows=0)
+    except Exception as exc:
+        raise RuntimeError(f'Unable to read CSV header from {raw_csv}: {exc}')
+    missing = [c for c in usecols if c not in sample.columns]
+    if missing:
+        raise RuntimeError(f'Missing required columns in raw CSV: {missing}')
 
     # Print the run settings
     log('START', f'raw: {raw_csv}')

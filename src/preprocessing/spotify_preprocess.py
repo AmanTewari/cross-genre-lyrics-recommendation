@@ -2,7 +2,7 @@
 
 Two-pass streaming pipeline that matches the notebook logic but runs as a CLI script.
 - Pass 1: stream the raw CSV in chunks, clean rows, deduplicate on composite keys and lyric hash, collect word counts, and compute IQR bounds.
-- Pass 2: stream again, reapply cleaning + dedup + word-count IQR filter, and write a single consolidated spotify_clean.csv.
+- Pass 2: stream again, reapply cleaning + dedup + word-count IQR filter, and write a single consolidated clean_lyrics_dataset.csv.
 
 Defaults mirror the notebook; override paths or chunk size via CLI flags.
 """
@@ -231,7 +231,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Memory-light Spotify preprocessing (two-pass streaming).')
     parser.add_argument('--chunk-size', type=int, default=50_000, help='Chunk size for streaming reads.')
     parser.add_argument('--input', type=Path, help='Path to raw songs_with_attributes_and_lyrics.csv.')
-    parser.add_argument('--output', type=Path, help='Path to write spotify_clean.csv.')
+    parser.add_argument('--output', type=Path, help='Path to write clean_lyrics_dataset.csv.')
     return parser.parse_args()
 
 
@@ -243,7 +243,7 @@ def main() -> None:
 
     app_root = detect_app_root(Path.cwd())
     default_raw = app_root / 'data' / 'raw' / 'songs_with_attributes_and_lyrics.csv'
-    default_out = app_root / 'data' / 'processed' / 'spotify_clean.csv'
+    default_out = app_root / 'data' / 'processed' / 'clean_lyrics_dataset.csv'
 
     raw_csv = args.input if args.input is not None else default_raw
     out_csv = args.output if args.output is not None else default_out
