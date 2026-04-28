@@ -29,7 +29,7 @@ CLI-friendly version of the Spotify preprocessing pipeline. It mirrors the two-p
 
 ## Output
 
-* Default: `data/processed/spotify_clean.csv`
+* Default: `data/processed/clean_lyrics_dataset.csv`
 
 ## Notes
 

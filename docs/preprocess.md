@@ -13,7 +13,7 @@ Legacy preprocessing script for the Spotify lyrics dataset. It performs two stre
 * Filters non-English rows using an ASCII ratio heuristic.
 * Normalizes title, artist, and lyric text.
 * Removes duplicates using composite title+artist keys and lyric hashes.
-* Writes a cleaned CSV to `data/processed/spotify_clean.csv`.
+* Writes a cleaned CSV to `data/processed/clean_lyrics_dataset.csv`.
 
 ## Key functions
 
@@ -29,9 +29,9 @@ Legacy preprocessing script for the Spotify lyrics dataset. It performs two stre
 
 ## Output
 
-* `data/processed/spotify_clean.csv`
+* `data/processed/clean_lyrics_dataset.csv`
 
 ## Notes
 
 * This file is a legacy notebook-style script and runs immediately at import time because of the final `run_pipeline()` call.
-* The current downstream pipeline uses `data/processed/clean_lyrics_dataset.csv` instead of this older output.
+* The active preprocessing output is `data/processed/clean_lyrics_dataset.csv`, which is consumed by the feature extraction step.

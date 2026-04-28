@@ -143,7 +143,7 @@ Run the entire pipeline end-to-end in one command:
 
 **Any OS (Python):**
 ```bash
-python main_pipeline.py
+python pipeline/main_pipeline.py
 ```
 
 ### Pipeline Steps
@@ -152,25 +152,25 @@ The automated pipeline consists of four sequential steps:
 
 | Step | Script | Module | Purpose |
 |------|--------|--------|----------|
-| 1 | `run_step1.py` | `src/preprocessing/` | Clean and deduplicate raw lyrics CSV |
-| 2 | `run_step2.py` | `src/features/` | Extract 10 numeric features from cleaned lyrics |
-| 3 | `run_step3.py` | `src/models/` | Scale features, select K, train KMeans clustering |
-| 4 | `run_step4.py` | `src/utils/` | Test recommendation engine with smoke test |
+| 1 | `pipeline/run_step1.py` | `src/preprocessing/` | Clean and deduplicate raw lyrics CSV |
+| 2 | `pipeline/run_step2.py` | `src/features/` | Extract 10 numeric features from cleaned lyrics |
+| 3 | `pipeline/run_step3.py` | `src/models/` | Scale features, select K, train KMeans clustering |
+| 4 | `pipeline/run_step4.py` | `src/utils/` | Test recommendation engine with smoke test |
 
 ### Run Individual Steps
 
 ```bash
-python run_step1.py  # Preprocessing
-python run_step2.py  # Feature extraction
-python run_step3.py  # Clustering
-python run_step4.py  # Recommendations
+python pipeline/run_step1.py  # Preprocessing
+python pipeline/run_step2.py  # Feature extraction
+python pipeline/run_step3.py  # Clustering
+python pipeline/run_step4.py  # Recommendations
 ```
 
 ### Expected Artifacts
 
 After successful execution:
 
-* `data/processed/spotify_clean.csv` — deduplicated, filtered dataset
+* `data/processed/clean_lyrics_dataset.csv` — deduplicated, filtered dataset
 * `data/processed/feature_matrix.csv` — extracted features for each song
 * `data/processed/scaled_features.npy` — normalized feature vectors
 * `data/processed/clustered_dataset.csv` — songs with assigned cluster labels
@@ -185,16 +185,16 @@ Each core module exposes a `run()` function:
 
 ```
 run_pipeline.bat
-  ↓
-main_pipeline.py (controller)
-  ↓
-run_step1.py → src/preprocessing/clean_dataset.py → src/preprocessing/preprocess.py::run()
-  ↓
-run_step2.py → src/features/extract_features.py::run()
-  ↓
-run_step3.py → src/models/train_kmeans.py → src/models/cluster_pipeline.py::run()
-  ↓
-run_step4.py → src/utils/recommend.py::run()
+   ↓
+pipeline/main_pipeline.py (controller)
+   ↓
+pipeline/run_step1.py → src/preprocessing/clean_dataset.py → src/preprocessing/preprocess.py::run()
+   ↓
+pipeline/run_step2.py → src/features/extract_features.py::run()
+   ↓
+pipeline/run_step3.py → src/models/train_kmeans.py → src/models/cluster_pipeline.py::run()
+   ↓
+pipeline/run_step4.py → src/utils/recommend.py::run()
 ```
 
 ---
@@ -237,7 +237,7 @@ This project is developed for academic purposes as part of a Minor Project submi
 
 * **v0.0.5 — Feature Extraction Pipeline Initialization**
 
-   * Added initial feature extraction module at `src/features/extract_features.py` that loads `data/processed/spotify_clean.csv`, validates required columns (`id`, `title`, `artist`, `lyrics`), removes rows with missing lyrics, and adds a helper `_word_count` column used for later feature extraction. Basic diagnostics (total, avg, min, max word counts) are printed on load.
+   * Added initial feature extraction module at `src/features/extract_features.py` that loads `data/processed/clean_lyrics_dataset.csv`, validates required columns (`id`, `title`, `artist`, `lyrics`), removes rows with missing lyrics, and adds a helper `_word_count` column used for later feature extraction. Basic diagnostics (total, avg, min, max word counts) are printed on load.
 
 * **v0.0.6 — Clean Feature Matrix and GUI Wrapper**
 
@@ -253,8 +253,8 @@ This project is developed for academic purposes as part of a Minor Project submi
 
    * Added `run()` entry points to all core modules: `preprocess.py`, `extract_features.py`, `feature_gui.py`, `cluster_pipeline.py`.
    * Created thin wrapper modules: `src/preprocessing/clean_dataset.py`, `src/models/train_kmeans.py`, `src/utils/recommend.py`.
-   * Added root-level step scripts: `run_step1.py`, `run_step2.py`, `run_step3.py`, `run_step4.py`.
-   * Added main controller: `main_pipeline.py` (orchestrates all steps with error handling).
+   * Added pipeline entry scripts in `pipeline/`: `run_step1.py`, `run_step2.py`, `run_step3.py`, `run_step4.py`.
+   * Added main controller: `pipeline/main_pipeline.py` (orchestrates all steps with error handling).
    * Added batch file: `run_pipeline.bat` (one-click Windows execution with venv activation).
    * All changes preserve existing logic; no code duplication or restructuring.
 

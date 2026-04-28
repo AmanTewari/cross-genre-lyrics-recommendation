@@ -39,7 +39,7 @@ Pipeline includes:
 * Normalize lyrics
 * Remove duplicate lyrics using hash comparison
 * Remove extreme length outliers
-* Save cleaned dataset to: `data/processed/spotify_clean.csv`
+* Save cleaned dataset to: `data/processed/clean_lyrics_dataset.csv`
 
 ---
 
@@ -124,7 +124,7 @@ This version prepares dataset for composite key and lyric hash deduplication.
   * IQR-based word-count filtering
 
 * Auto-detects repository root (formerly `approot`) and applies default raw/processed paths
-* Produces single consolidated `spotify_clean.csv` output to `data/processed`
+* Produces single consolidated `clean_lyrics_dataset.csv` output to `data/processed`
 * Deprecated `spotify960k_preprocessing` into `spotify960k_preprocessing_old_deprecated` due to performance issues
 
 ---
@@ -138,7 +138,7 @@ This version prepares dataset for composite key and lyric hash deduplication.
 ## v0.0.5.2 — Feature Extraction Pipeline Initialization
 
 * Created initial feature extraction module: `src/features/extract_features.py`
-* Implemented dataset loading from `data/processed/spotify_clean.csv`
+* Implemented dataset loading from `data/processed/clean_lyrics_dataset.csv`
 * Added validation for required columns:
 
   * id
