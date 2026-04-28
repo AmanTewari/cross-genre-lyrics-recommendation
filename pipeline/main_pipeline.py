@@ -4,27 +4,27 @@ from argparse import ArgumentParser
 
 
 steps = [
-    "run_step1.py",
-    "run_step2.py",
-    "run_step3.py",
-    "run_step4.py",
+    "pipeline/run_step1.py",
+    "pipeline/run_step2.py",
+    "pipeline/run_step3.py",
+    "pipeline/run_step4.py",
 ]
 
 
 def _resolve_skips(skip_values: list[str]) -> set[str]:
     alias_to_step = {
-        "1": "run_step1.py",
-        "2": "run_step2.py",
-        "3": "run_step3.py",
-        "4": "run_step4.py",
-        "step1": "run_step1.py",
-        "step2": "run_step2.py",
-        "step3": "run_step3.py",
-        "step4": "run_step4.py",
-        "run_step1.py": "run_step1.py",
-        "run_step2.py": "run_step2.py",
-        "run_step3.py": "run_step3.py",
-        "run_step4.py": "run_step4.py",
+        "1": "pipeline/run_step1.py",
+        "2": "pipeline/run_step2.py",
+        "3": "pipeline/run_step3.py",
+        "4": "pipeline/run_step4.py",
+        "step1": "pipeline/run_step1.py",
+        "step2": "pipeline/run_step2.py",
+        "step3": "pipeline/run_step3.py",
+        "step4": "pipeline/run_step4.py",
+        "run_step1.py": "pipeline/run_step1.py",
+        "run_step2.py": "pipeline/run_step2.py",
+        "run_step3.py": "pipeline/run_step3.py",
+        "run_step4.py": "pipeline/run_step4.py",
     }
     resolved: set[str] = set()
     for value in skip_values:
