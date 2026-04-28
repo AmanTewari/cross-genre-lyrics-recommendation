@@ -74,7 +74,7 @@ def extract_features(lyrics):
 def build_feature_matrix(df: pd.DataFrame) -> pd.DataFrame:
     validate_columns(df)
 
-    features = df["lyrics"].apply(extract_features)
+    features = df["lyrics"].fillna("").astype(str).apply(extract_features)
 
     feature_matrix = pd.DataFrame(
         features.tolist(),

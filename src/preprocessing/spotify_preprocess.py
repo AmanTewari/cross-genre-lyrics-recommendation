@@ -71,6 +71,12 @@ def md5_hash(s: str) -> str:
     return hashlib.md5(s.encode('utf-8')).hexdigest()
 
 
+def sanitize_text_series(series: pd.Series) -> pd.Series:
+    cleaned = series.fillna('').astype(str).str.strip()
+    cleaned = cleaned.replace(r'^\s*(nan|none|null|nat)\s*$', '', regex=True)
+    return cleaned
+
+
 # -----------------------------------------------------------------------------
 # Core processing
 # -----------------------------------------------------------------------------
@@ -92,30 +98,49 @@ def detect_app_root(start: Path) -> Path:
 
 def clean_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     chunk = chunk.rename(columns={'name': 'title', 'artists': 'artist'})
-    chunk = chunk[chunk['lyrics'].notna()].copy()
 
-    chunk['_word_count'] = chunk['lyrics'].astype(str).str.split().str.len()
+    for col in ('id', 'title', 'artist', 'lyrics'):
+        if col not in chunk.columns:
+            chunk[col] = ''
+
+    chunk['id'] = sanitize_text_series(chunk['id'])
+    chunk['title'] = sanitize_text_series(chunk['title'])
+    chunk['artist'] = sanitize_text_series(chunk['artist'])
+    chunk['lyrics'] = sanitize_text_series(chunk['lyrics'])
+
+    chunk = chunk[chunk['lyrics'] != ''].copy()
+
+    chunk['_word_count'] = chunk['lyrics'].str.split().str.len()
     chunk = chunk[chunk['_word_count'] >= 30].copy()
     chunk['_ascii'] = chunk['lyrics'].astype(str).map(ascii_ratio)
     chunk = chunk[chunk['_ascii'] >= 0.90].copy()
 
-    chunk['artist'] = chunk['artist'].astype(str).str.lower()
+    chunk['artist'] = chunk['artist'].str.lower()
     chunk['artist'] = chunk['artist'].str.replace(r'\[|\]', '', regex=True)
     chunk['artist'] = chunk['artist'].str.replace("'", '', regex=False)
     chunk['artist'] = chunk['artist'].str.replace(r'\s+', ' ', regex=True).str.strip()
 
-    chunk['title'] = chunk['title'].astype(str)
+    chunk['title'] = chunk['title'].str.strip()
     chunk['normalized_title'] = chunk['title'].map(normalize_title_strong)
 
     chunk['normalized_artist'] = chunk['artist'].str.lower()
     chunk['normalized_artist'] = chunk['normalized_artist'].str.replace(r'[^A-Za-z0-9 ]+', ' ', regex=True)
     chunk['normalized_artist'] = chunk['normalized_artist'].str.replace(r'\s+', ' ', regex=True).str.strip()
 
+    chunk['normalized_title'] = chunk['normalized_title'].replace('', 'unknown_title')
+    chunk['normalized_artist'] = chunk['normalized_artist'].replace('', 'unknown_artist')
+
+    missing_id = chunk['id'] == ''
+    if missing_id.any():
+        chunk.loc[missing_id, 'id'] = 'missing_id_' + chunk.loc[missing_id].index.astype(str)
+
     chunk['lyrics'] = chunk['lyrics'].astype(str).map(normalize_lyrics)
 
     chunk['normalized_lyrics'] = chunk['lyrics'].str.lower()
     chunk['normalized_lyrics'] = chunk['normalized_lyrics'].str.replace(r'[^\w\s]', ' ', regex=True)
     chunk['normalized_lyrics'] = chunk['normalized_lyrics'].str.replace(r'\s+', ' ', regex=True).str.strip()
+
+    chunk = chunk[chunk['normalized_lyrics'] != ''].copy()
 
     chunk['_comp_key'] = chunk['normalized_title'].fillna('') + '_' + chunk['normalized_artist'].fillna('')
     chunk['_lyrics_hash'] = chunk['lyrics'].map(md5_hash)

@@ -31,7 +31,7 @@ def detect_app_root(start: Path) -> Path:
 # Set up file paths for input and output
 APP_ROOT = detect_app_root(Path.cwd())  # Find the main project folder
 RAW_CSV = APP_ROOT / 'data' / 'raw' / 'songs_with_attributes_and_lyrics.csv'  # Where the original Spotify data is stored
-OUT_CSV = APP_ROOT / 'data' / 'processed' / 'spotify_clean.csv'  # Where we'll save the cleaned data
+OUT_CSV = APP_ROOT / 'data' / 'processed' / 'clean_lyrics_dataset.csv'  # Where we'll save the cleaned data
 CHUNK_SIZE = 50_000  # How many rows to process at once (smaller = less memory used, but slower)
 
 # Print the paths so we can verify they're correct
@@ -113,6 +113,13 @@ def normalize_lyrics(text: str) -> str:
 # Same lyrics always produce the same hash
 def md5_hash(s: str) -> str:
     return hashlib.md5(s.encode('utf-8')).hexdigest()
+
+
+def sanitize_text_series(series: pd.Series) -> pd.Series:
+    cleaned = series.fillna('').astype(str).str.strip()
+    # Convert placeholder null tokens that often appear after CSV parsing/casting.
+    cleaned = cleaned.replace(r'^\s*(nan|none|null|nat)\s*$', '', regex=True)
+    return cleaned
 # Cleaning and streaming passes
 
 # Define which columns to read from the raw CSV file
@@ -129,12 +136,23 @@ def clean_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     """
     # Rename columns to be clearer: 'name' becomes 'title', 'artists' becomes 'artist'
     chunk = chunk.rename(columns={'name': 'title', 'artists': 'artist'})
-    
-    # Remove any songs that don't have lyrics
-    chunk = chunk[chunk['lyrics'].notna()].copy()
+
+    # Ensure expected columns exist even if a malformed chunk is encountered.
+    for col in ('id', 'title', 'artist', 'lyrics'):
+        if col not in chunk.columns:
+            chunk[col] = ''
+
+    # Normalize obvious NaN/null placeholders early.
+    chunk['id'] = sanitize_text_series(chunk['id'])
+    chunk['title'] = sanitize_text_series(chunk['title'])
+    chunk['artist'] = sanitize_text_series(chunk['artist'])
+    chunk['lyrics'] = sanitize_text_series(chunk['lyrics'])
+
+    # Remove rows without usable lyrics after sanitization.
+    chunk = chunk[chunk['lyrics'] != ''].copy()
 
     # Count how many words are in each song's lyrics
-    chunk['_word_count'] = chunk['lyrics'].astype(str).str.split().str.len()
+    chunk['_word_count'] = chunk['lyrics'].str.split().str.len()
     # Keep only songs with at least 30 words (filters out very short/incomplete lyrics)
     chunk = chunk[chunk['_word_count'] >= 30].copy()
     
@@ -144,14 +162,14 @@ def clean_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     chunk = chunk[chunk['_ascii'] >= 0.90].copy()
 
     # Clean up artist names: make lowercase, remove brackets and quotes, fix spacing
-    chunk['artist'] = chunk['artist'].astype(str).str.lower()
+    chunk['artist'] = chunk['artist'].str.lower()
     chunk['artist'] = chunk['artist'].str.replace(r'\[|\]', '', regex=True)
     chunk['artist'] = chunk['artist'].str.replace("'", '', regex=False)
     chunk['artist'] = chunk['artist'].str.replace(r'\s+', ' ', regex=True).str.strip()
 
     # Create a standardized version of the song title (for finding duplicates)
     # Removes punctuation, makes lowercase, etc.
-    chunk['title'] = chunk['title'].astype(str)
+    chunk['title'] = chunk['title'].str.strip()
     chunk['normalized_title'] = chunk['title'].map(normalize_title_strong)
 
     # Create a standardized version of the artist name (also for finding duplicates)
@@ -159,14 +177,26 @@ def clean_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     chunk['normalized_artist'] = chunk['normalized_artist'].str.replace(r'[^A-Za-z0-9 ]+', ' ', regex=True)
     chunk['normalized_artist'] = chunk['normalized_artist'].str.replace(r'\s+', ' ', regex=True).str.strip()
 
+    # Keep deterministic fallbacks for rows with missing metadata.
+    chunk['normalized_title'] = chunk['normalized_title'].replace('', 'unknown_title')
+    chunk['normalized_artist'] = chunk['normalized_artist'].replace('', 'unknown_artist')
+
+    # Build deterministic fallback IDs for blank/malformed id values.
+    missing_id = chunk['id'] == ''
+    if missing_id.any():
+        chunk.loc[missing_id, 'id'] = 'missing_id_' + chunk.loc[missing_id].index.astype(str)
+
     # Clean up the lyrics text while keeping line breaks
-    chunk['lyrics'] = chunk['lyrics'].astype(str).map(normalize_lyrics)
+    chunk['lyrics'] = chunk['lyrics'].map(normalize_lyrics)
 
     # Create another version of lyrics with everything lowercase and no punctuation
     # This helps detect duplicate songs even if the lyrics formatting is slightly different
     chunk['normalized_lyrics'] = chunk['lyrics'].str.lower()
     chunk['normalized_lyrics'] = chunk['normalized_lyrics'].str.replace(r'[^\\w\\s]', ' ', regex=True)
     chunk['normalized_lyrics'] = chunk['normalized_lyrics'].str.replace(r'\\s+', ' ', regex=True).str.strip()
+
+    # Drop rows that became empty after final lyrics normalization.
+    chunk = chunk[chunk['normalized_lyrics'] != ''].copy()
 
     # Create a unique key combining title + artist to identify duplicate songs
     chunk['_comp_key'] = chunk['normalized_title'].fillna('') + '_' + chunk['normalized_artist'].fillna('')
