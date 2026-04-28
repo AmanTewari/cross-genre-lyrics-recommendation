@@ -1,15 +1,16 @@
-from pathlib import Path
-import re
 from collections import Counter
+from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-REQUIRED_COLS = ["id", "title", "artist", "lyrics"]
+EMOTION_WORDS = set([
+    "love", "hate", "pain", "heart", "cry", "tears", "fear", "happy",
+    "sad", "anger", "lonely", "alone", "joy", "death", "dream", "hope",
+])
 
 
 def load_dataset(csv_path: Path) -> pd.DataFrame:
-    """Load CSV into a DataFrame."""
     csv_path = Path(csv_path)
     if not csv_path.exists():
         raise FileNotFoundError(f"Processed CSV not found at {csv_path}")
@@ -17,170 +18,102 @@ def load_dataset(csv_path: Path) -> pd.DataFrame:
 
 
 def validate_columns(df: pd.DataFrame) -> None:
-    """Ensure required columns exist in the DataFrame."""
-    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+    required = ["lyrics", "title", "artist"]
+    missing = [c for c in required if c not in df.columns]
     if missing:
         raise KeyError(f"Missing required columns: {missing}")
 
 
-def _count_words(text: str) -> int:
-    """Count words by splitting on whitespace and ignoring empty tokens."""
-    if not isinstance(text, str):
-        return 0
-    # find all non-whitespace tokens
-    tokens = re.findall(r"\S+", text)
-    return len(tokens)
+def extract_features(lyrics):
+    lines = lyrics.split("\n")
+    lines = [line.strip() for line in lines if line.strip() != ""]
+
+    words = lyrics.split()
+    words = [w.strip(".,!?\"'()-").lower() for w in words if w.strip() != ""]
+
+    total_words = len(words)
+
+    if total_words == 0:
+        return [0] * 10
+
+    unique_words = len(set(words))
+
+    lexical_diversity = unique_words / total_words
+
+    repetition_score = 1 - lexical_diversity
+
+    word_counts = Counter(words)
+    top_word_freq = word_counts.most_common(1)[0][1]
+    top_word_frequency_ratio = top_word_freq / total_words
+
+    num_lines = len(lines)
+
+    line_lengths = [len(line.split()) for line in lines] if num_lines > 0 else [0]
+
+    avg_line_length = np.mean(line_lengths)
+    line_length_variance = np.var(line_lengths)
+
+    emotion_count = sum(1 for w in words if w in EMOTION_WORDS)
+
+    emotion_density = emotion_count / total_words
+
+    return [
+        total_words,
+        unique_words,
+        lexical_diversity,
+        repetition_score,
+        top_word_frequency_ratio,
+        num_lines,
+        avg_line_length,
+        line_length_variance,
+        emotion_count,
+        emotion_density,
+    ]
 
 
-def prepare_word_count(df: pd.DataFrame) -> pd.DataFrame:
-    """Remove rows with missing lyrics and add `_word_count` column.
-
-    Returns a new DataFrame (copy) with `_word_count` retained for later features.
-    """
-    df = df.copy()
-    df = df[df["lyrics"].notna()].copy()
-    df["_word_count"] = df["lyrics"].map(_count_words)
-    return df
-
-
-def print_diagnostics(df: pd.DataFrame) -> None:
-    """Print basic diagnostics required by this step."""
-    total = len(df)
-    # use numpy to compute mean safely (will be float)
-    avg = int(round(np.nanmean(df["_word_count"]))) if total > 0 else 0
-    mn = int(np.nanmin(df["_word_count"])) if total > 0 else 0
-    mx = int(np.nanmax(df["_word_count"])) if total > 0 else 0
-
-    print(f"Songs loaded: {total}")
-    print(f"Average word count: {avg}")
-    print(f"Min word count: {mn}")
-    print(f"Max word count: {mx}")
-
-
-# Placeholder functions for later feature extraction steps (kept modular)
-def extract_lexical_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute lexical features per song and return a new DataFrame.
-
-    Adds the following columns without modifying `lyrics` or `_word_count`:
-    - `unique_words`
-    - `lexical_diversity` (unique_words / _word_count)
-    - `top_word_frequency`
-    - `repetition_score` (top_word_frequency / _word_count)
-    """
-    df = df.copy()
-    # Tokenize by lowercasing and extracting alphanumeric tokens (keeps apostrophes)
-    tokens = df["lyrics"].str.lower().str.findall(r"[a-z0-9']+")
-
-    # Cache tokens for reuse by downstream feature extractors
-    df["_tokens"] = tokens
-
-    # unique_words
-    df["unique_words"] = df["_tokens"].map(lambda toks: len(set(toks)) if isinstance(toks, list) else 0).astype(int)
-
-    # top_word_frequency using Counter; safe for non-list or empty inputs
-    def _top_freq(toks):
-        if not isinstance(toks, list) or len(toks) == 0:
-            return 0
-        return Counter(toks).most_common(1)[0][1]
-
-    df["top_word_frequency"] = df["_tokens"].map(_top_freq).astype(int)
-
-    # Avoid division by zero by treating zero word counts as NaN then filling with 0
-    total_words = df["_word_count"].replace(0, np.nan)
-    df["lexical_diversity"] = (df["unique_words"] / total_words).fillna(0)
-    df["repetition_score"] = (df["top_word_frequency"] / total_words).fillna(0)
-
-    # Diagnostics
-    avg_lexical_div = df["lexical_diversity"].mean() if len(df) > 0 else 0.0
-    avg_repetition = df["repetition_score"].mean() if len(df) > 0 else 0.0
-    avg_unique = int(round(df["unique_words"].mean())) if len(df) > 0 else 0
-
-    print(f"Average lexical diversity: {avg_lexical_div:.3f}")
-    print(f"Average repetition score: {avg_repetition:.3f}")
-    print(f"Average unique words: {avg_unique}")
-
-    return df
-
-
-def extract_structural_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute structural features based on lyric line structure.
-
-    Adds the following columns to a copy of `df` and returns it:
-    - `line_count`: number of non-empty lines
-    - `avg_line_length`: average words per line (float)
-    - `line_length_variance`: variance of words-per-line (float)
-
-    Rules:
-    - Split lyrics on "\n" and ignore empty lines after strip().
-    - Count words per line using the existing `_count_words` helper.
-    - If a song has no valid lines, all three features are 0.
-    """
-    df = df.copy()
-
-    def _process(lyrics):
-        if not isinstance(lyrics, str):
-            return 0, 0.0, 0.0
-
-        # Split into lines and ignore empty ones
-        lines = [ln.strip() for ln in lyrics.split("\n") if ln.strip()]
-        if not lines:
-            return 0, 0.0, 0.0
-
-        # Count words per line using existing helper (whitespace-safe)
-        lengths = [_count_words(line) for line in lines]
-        line_count = len(lengths)
-
-        # Avoid division by zero; numpy handles single-element variance -> 0.0
-        avg_line_length = float(np.mean(lengths)) if line_count > 0 else 0.0
-        line_length_variance = float(np.var(lengths)) if line_count > 0 else 0.0
-
-        return int(line_count), avg_line_length, line_length_variance
-
-    # Map processing across lyrics column
-    stats = df["lyrics"].map(_process)
-
-    # Expand tuples into a DataFrame aligned with df index
-    stats_df = pd.DataFrame(stats.tolist(), index=df.index, columns=["line_count", "avg_line_length", "line_length_variance"])
-
-    # Ensure correct dtypes
-    stats_df["line_count"] = stats_df["line_count"].astype(int)
-    stats_df["avg_line_length"] = stats_df["avg_line_length"].astype(float)
-    stats_df["line_length_variance"] = stats_df["line_length_variance"].astype(float)
-
-    # Assign to copy and return
-    df = pd.concat([df, stats_df], axis=1)
-
-    # Diagnostics: print averages across the dataset
-    total = len(df)
-    avg_count = float(np.nanmean(df["line_count"])) if total > 0 else 0.0
-    avg_len = float(np.nanmean(df["avg_line_length"])) if total > 0 else 0.0
-    avg_var = float(np.nanmean(df["line_length_variance"])) if total > 0 else 0.0
-
-    print(f"Average line count: {avg_count:.3f}")
-    print(f"Average line length: {avg_len:.3f}")
-    print(f"Average line variance: {avg_var:.3f}")
-
-    return df
-
-
-def extract_emotion_features(df: pd.DataFrame) -> pd.DataFrame:
-    raise NotImplementedError("extract_emotion_features will be implemented later")
-
-
-def main(csv_path: str | Path = "data/processed/spotify_clean.csv") -> pd.DataFrame:
-    """Load, validate, prepare `_word_count`, and print diagnostics.
-
-    Returns the prepared DataFrame (with `_word_count`) for downstream steps.
-    """
-    path = Path(csv_path)
-    df = load_dataset(path)
+def build_feature_matrix(df: pd.DataFrame) -> pd.DataFrame:
     validate_columns(df)
-    df_prepared = prepare_word_count(df)
-    print_diagnostics(df_prepared)
 
-    # Compute lexical features now and return the augmented DataFrame
-    df_features = extract_lexical_features(df_prepared)
-    return df_features
+    features = df["lyrics"].apply(extract_features)
+
+    feature_matrix = pd.DataFrame(
+        features.tolist(),
+        columns=[
+            "total_words",
+            "unique_words",
+            "lexical_diversity",
+            "repetition_score",
+            "top_word_frequency_ratio",
+            "num_lines",
+            "avg_line_length",
+            "line_length_variance",
+            "emotion_word_count",
+            "emotion_density",
+        ],
+    )
+
+    feature_matrix["title"] = df["title"].fillna("unknown_title").astype(str)
+    feature_matrix["artist"] = df["artist"].fillna("unknown_artist").astype(str)
+
+    return feature_matrix
+
+
+def main(
+    input_path: str | Path = "data/processed/clean_lyrics_dataset.csv",
+    output_path: str | Path = "data/processed/feature_matrix.csv",
+) -> pd.DataFrame:
+    df = load_dataset(Path(input_path))
+    feature_matrix = build_feature_matrix(df)
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_matrix.to_csv(output_path, index=False)
+
+    print(feature_matrix.shape)
+    print(feature_matrix.describe())
+    print(feature_matrix.isnull().sum())
+
+    return feature_matrix
 
 
 if __name__ == "__main__":
