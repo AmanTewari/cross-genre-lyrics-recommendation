@@ -130,6 +130,75 @@ project-root/
 
 ---
 
+## Automated Pipeline Execution
+
+### Quick Start
+
+Run the entire pipeline end-to-end in one command:
+
+**Windows (PowerShell or Command Prompt):**
+```bash
+.\run_pipeline.bat
+```
+
+**Any OS (Python):**
+```bash
+python main_pipeline.py
+```
+
+### Pipeline Steps
+
+The automated pipeline consists of four sequential steps:
+
+| Step | Script | Module | Purpose |
+|------|--------|--------|----------|
+| 1 | `run_step1.py` | `src/preprocessing/` | Clean and deduplicate raw lyrics CSV |
+| 2 | `run_step2.py` | `src/features/` | Extract 10 numeric features from cleaned lyrics |
+| 3 | `run_step3.py` | `src/models/` | Scale features, select K, train KMeans clustering |
+| 4 | `run_step4.py` | `src/utils/` | Test recommendation engine with smoke test |
+
+### Run Individual Steps
+
+```bash
+python run_step1.py  # Preprocessing
+python run_step2.py  # Feature extraction
+python run_step3.py  # Clustering
+python run_step4.py  # Recommendations
+```
+
+### Expected Artifacts
+
+After successful execution:
+
+* `data/processed/spotify_clean.csv` — deduplicated, filtered dataset
+* `data/processed/feature_matrix.csv` — extracted features for each song
+* `data/processed/scaled_features.npy` — normalized feature vectors
+* `data/processed/clustered_dataset.csv` — songs with assigned cluster labels
+* `models/scaler.pkl` — fitted StandardScaler
+* `models/kmeans_model.pkl` — trained KMeans model
+* `reports/elbow_plot.png` — K selection diagnostic
+* `reports/silhouette_plot.png` — silhouette score by K
+
+### Pipeline Architecture
+
+Each core module exposes a `run()` function:
+
+```
+run_pipeline.bat
+  ↓
+main_pipeline.py (controller)
+  ↓
+run_step1.py → src/preprocessing/clean_dataset.py → src/preprocessing/preprocess.py::run()
+  ↓
+run_step2.py → src/features/extract_features.py::run()
+  ↓
+run_step3.py → src/models/train_kmeans.py → src/models/cluster_pipeline.py::run()
+  ↓
+run_step4.py → src/utils/recommend.py::run()
+```
+
+---
+
 ## Key Design Principles
 
 * Unsupervised learning only
@@ -179,6 +248,15 @@ This project is developed for academic purposes as part of a Minor Project submi
 
    * Added `src/models/cluster_pipeline.py` to scale the feature matrix, select `K` deterministically, train KMeans, and persist clustering artifacts.
    * Added deterministic same-cluster cosine-distance recommendations with strict title matching and no randomness.
+
+* **v0.0.8 — Automated Pipeline Controller**
+
+   * Added `run()` entry points to all core modules: `preprocess.py`, `extract_features.py`, `feature_gui.py`, `cluster_pipeline.py`.
+   * Created thin wrapper modules: `src/preprocessing/clean_dataset.py`, `src/models/train_kmeans.py`, `src/utils/recommend.py`.
+   * Added root-level step scripts: `run_step1.py`, `run_step2.py`, `run_step3.py`, `run_step4.py`.
+   * Added main controller: `main_pipeline.py` (orchestrates all steps with error handling).
+   * Added batch file: `run_pipeline.bat` (one-click Windows execution with venv activation).
+   * All changes preserve existing logic; no code duplication or restructuring.
 
 ---
 

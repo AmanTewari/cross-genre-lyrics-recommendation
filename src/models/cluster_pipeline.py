@@ -287,9 +287,13 @@ def debug_cluster(song_index: int, clustered_path: Path | None = None, scaled_pa
     print(df[df["cluster"] == cluster][["title", "artist"]])
 
 
+def run() -> dict[str, object]:
+    return train_pipeline()
+
+
 def main() -> None:
     train_pipeline()
 
 
 if __name__ == "__main__":
-    main()
+    run()

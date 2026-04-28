@@ -297,5 +297,10 @@ def run_pipeline(raw_csv: Path = RAW_CSV, out_csv: Path = OUT_CSV, chunk_size: i
     # Final summary of what happened
     log('DONE', f'input {rows_in:,} | kept after pass1 {rows_kept:,} | written {rows_written:,}')
 
-# Execute the full pipeline with the current settings
-run_pipeline()
+
+def run(raw_csv: Path = RAW_CSV, out_csv: Path = OUT_CSV, chunk_size: int = CHUNK_SIZE) -> None:
+    run_pipeline(raw_csv=raw_csv, out_csv=out_csv, chunk_size=chunk_size)
+
+
+if __name__ == '__main__':
+    run()

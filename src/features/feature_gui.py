@@ -202,11 +202,15 @@ class FeatureExtractionApp:
         self.correlation_canvas.get_tk_widget().pack(fill="both", expand=True)
 
 
-def main() -> None:
+def run() -> None:
     root = tk.Tk()
     app = FeatureExtractionApp(root)
     root.mainloop()
 
 
+def main() -> None:
+    run()
+
+
 if __name__ == "__main__":
-    main()
+    run()

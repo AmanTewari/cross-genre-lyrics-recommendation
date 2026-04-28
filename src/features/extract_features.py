@@ -98,7 +98,7 @@ def build_feature_matrix(df: pd.DataFrame) -> pd.DataFrame:
     return feature_matrix
 
 
-def main(
+def run(
     input_path: str | Path = "data/processed/clean_lyrics_dataset.csv",
     output_path: str | Path = "data/processed/feature_matrix.csv",
 ) -> pd.DataFrame:
@@ -116,5 +116,12 @@ def main(
     return feature_matrix
 
 
+def main(
+    input_path: str | Path = "data/processed/clean_lyrics_dataset.csv",
+    output_path: str | Path = "data/processed/feature_matrix.csv",
+) -> pd.DataFrame:
+    return run(input_path=input_path, output_path=output_path)
+
+
 if __name__ == "__main__":
-    main()
+    run()
