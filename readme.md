@@ -99,6 +99,8 @@ project-root/
 │   ├── interim/
 │   └── processed/
 │
+├── models/
+├── docs/
 ├── src/
 │   ├── preprocessing/
 │   ├── features/
@@ -167,3 +169,29 @@ This project is developed for academic purposes as part of a Minor Project submi
 * **v0.0.5 — Feature Extraction Pipeline Initialization**
 
    * Added initial feature extraction module at `src/features/extract_features.py` that loads `data/processed/spotify_clean.csv`, validates required columns (`id`, `title`, `artist`, `lyrics`), removes rows with missing lyrics, and adds a helper `_word_count` column used for later feature extraction. Basic diagnostics (total, avg, min, max word counts) are printed on load.
+
+* **v0.0.6 — Clean Feature Matrix and GUI Wrapper**
+
+   * Added a deterministic 10-feature extraction layer that produces `data/processed/feature_matrix.csv` from `data/processed/clean_lyrics_dataset.csv`.
+   * Added a tkinter GUI wrapper at `src/features/feature_gui.py` with true per-row progress and a feature correlation matrix visualization.
+
+* **v0.0.7 — Scaling, Clustering, and Recommendation Pipeline**
+
+   * Added `src/models/cluster_pipeline.py` to scale the feature matrix, select `K` deterministically, train KMeans, and persist clustering artifacts.
+   * Added deterministic same-cluster cosine-distance recommendations with strict title matching and no randomness.
+
+---
+
+## Current Python Modules
+
+* `src/preprocessing/preprocess.py` - legacy two-pass preprocessing script for cleaning the raw Spotify lyrics CSV.
+* `src/preprocessing/spotify_preprocess.py` - CLI version of the two-pass preprocessing pipeline with the same cleaning logic.
+* `src/features/extract_features.py` - fixed 10-feature extractor that converts cleaned lyrics into numeric feature vectors.
+* `src/features/feature_gui.py` - tkinter wrapper that runs feature extraction with visible progress and displays a correlation matrix.
+* `src/models/cluster_pipeline.py` - scaling, K selection, KMeans training, artifact persistence, and recommendation helpers.
+
+---
+
+## Documentation
+
+Knowledge-transfer notes for each Python module are stored in the `docs/` directory.
