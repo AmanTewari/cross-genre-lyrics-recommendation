@@ -7,7 +7,10 @@ Templates/
 *.template
 *.tmpl
 *.tpl
-
+*.pdf
+*.docx
+*.xlsx
+*.pptx
 # Ignore data folders and files
 data/
 *.data
