@@ -7,3 +7,5 @@ This directory contains knowledge-transfer notes for each Python module in the p
 * [extract_features.md](extract_features.md)
 * [feature_gui.md](feature_gui.md)
 * [cluster_pipeline.md](cluster_pipeline.md)
+* [evaluation.md](evaluation.md)
+* [ui_pipeline_guide.md](ui_pipeline_guide.md)
