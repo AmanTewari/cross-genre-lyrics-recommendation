@@ -8,6 +8,7 @@ steps = [
     "pipeline/run_step2.py",
     "pipeline/run_step3.py",
     "pipeline/run_step4.py",
+    "pipeline/run_step5.py",
 ]
 
 
@@ -17,14 +18,17 @@ def _resolve_skips(skip_values: list[str]) -> set[str]:
         "2": "pipeline/run_step2.py",
         "3": "pipeline/run_step3.py",
         "4": "pipeline/run_step4.py",
+        "5": "pipeline/run_step5.py",
         "step1": "pipeline/run_step1.py",
         "step2": "pipeline/run_step2.py",
         "step3": "pipeline/run_step3.py",
         "step4": "pipeline/run_step4.py",
+        "step5": "pipeline/run_step5.py",
         "run_step1.py": "pipeline/run_step1.py",
         "run_step2.py": "pipeline/run_step2.py",
         "run_step3.py": "pipeline/run_step3.py",
         "run_step4.py": "pipeline/run_step4.py",
+        "run_step5.py": "pipeline/run_step5.py",
     }
     resolved: set[str] = set()
     for value in skip_values:
@@ -33,7 +37,7 @@ def _resolve_skips(skip_values: list[str]) -> set[str]:
             resolved.add(alias_to_step[key])
         else:
             raise SystemExit(
-                f"Invalid --skip value: {value}. Use step1..step4, 1..4, or run_stepN.py."
+                f"Invalid --skip value: {value}. Use step1..step5, 1..5, or run_stepN.py."
             )
     return resolved
 

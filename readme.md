@@ -156,6 +156,7 @@ The automated pipeline consists of four sequential steps:
 | 2 | `pipeline/run_step2.py` | `src/features/` | Extract 10 numeric features from cleaned lyrics |
 | 3 | `pipeline/run_step3.py` | `src/models/` | Scale features, select K, train KMeans clustering |
 | 4 | `pipeline/run_step4.py` | `src/utils/` | Test recommendation engine with smoke test |
+| 5 | `pipeline/run_step5.py` | `src/evaluation/` | Validate clustering quality and recommendation behavior |
 
 ### Run Individual Steps
 
@@ -164,6 +165,7 @@ python pipeline/run_step1.py  # Preprocessing
 python pipeline/run_step2.py  # Feature extraction
 python pipeline/run_step3.py  # Clustering
 python pipeline/run_step4.py  # Recommendations
+python pipeline/run_step5.py  # Validation
 ```
 
 ### Expected Artifacts

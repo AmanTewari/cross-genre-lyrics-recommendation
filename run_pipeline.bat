@@ -16,6 +16,7 @@ call :prompt_skip "Step 1 - Preprocessing" pipeline\run_step1.py
 call :prompt_skip "Step 2 - Feature extraction" pipeline\run_step2.py
 call :prompt_skip "Step 3 - Clustering" pipeline\run_step3.py
 call :prompt_skip "Step 4 - Recommendation checks" pipeline\run_step4.py
+call :prompt_skip "Step 5 - Validation" pipeline\run_step5.py
 
     if defined SKIP_STEPS (
     echo Skipping: %SKIP_STEPS%
