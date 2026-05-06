@@ -375,11 +375,26 @@ async function executeStage3_VectorRepresentation(featuresResult) {
 async function executeStage4_ClusterAssignment(vectorResult) {
 	const pipelineStages = document.getElementById('pipelineStages');
 
-	return new Promise((resolve) => {
-		setTimeout(() => {
-			// Mock cluster assignment
-			const clusterNumber = Math.floor(Math.random() * 12) + 1;
-			const confidence = (60 + Math.random() * 35).toFixed(1); // 60-95%
+	return new Promise(async (resolve, reject) => {
+		const lyrics = document.getElementById('lyricsInput').value.trim();
+		// Call backend API to analyze lyrics
+		try {
+			const resp = await fetch('http://127.0.0.1:5001/api/analyze_lyrics', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ lyrics, top_n: 6 })
+			});
+
+			if (!resp.ok) {
+				const err = await resp.json().catch(() => ({ error: resp.statusText }));
+				throw new Error(err.error || resp.statusText || 'API error');
+			}
+
+			const data = await resp.json();
+
+			const clusterNumber = (typeof data.cluster !== 'undefined') ? (parseInt(data.cluster) + 1) : 0; // convert 0-index
+			const confidence = data.similarity_percent || 0;
+			const clustersCount = data.k || 12;
 
 			const stageHTML = `
 				<div class="pipeline-stage" style="animation-delay: 0.3s">
@@ -387,14 +402,14 @@ async function executeStage4_ClusterAssignment(vectorResult) {
 						<div class="stage-number">4</div>
 						<div>
 							<h2 class="stage-title">Unsupervised Cluster Detection</h2>
-							<p class="stage-description">K-means clustering with K=12</p>
+							<p class="stage-description">K-means clustering with K=${clustersCount}</p>
 						</div>
 					</div>
 					<div class="stage-content">
 						<div class="cluster-info">
 							<p style="font-size: 0.85rem; color: var(--ink-700); margin-bottom: 0.5rem;">Assigned Cluster</p>
 							<p class="cluster-number">${clusterNumber}</p>
-							<p class="cluster-label">Cluster ID from trained K-means model (K=12)</p>
+							<p class="cluster-label">Cluster ID from trained K-means model (K=${clustersCount})</p>
 
 							<p class="confidence-indicator">
 								<strong>Cluster Similarity Score</strong><br>
@@ -402,6 +417,21 @@ async function executeStage4_ClusterAssignment(vectorResult) {
 							</p>
 							<div class="confidence-bar">
 								<div class="confidence-fill" style="width: ${confidence}%"></div>
+							</div>
+						</div>
+
+						<div class="cluster-visual-row" style="display:flex; gap:1rem; margin-top:1rem; flex-wrap:wrap; align-items:flex-start;">
+							<div style="flex:2; min-width:360px;">
+								<p class="preview-label">Cluster Map</p>
+								<div style="padding:8px;">
+									<svg class="cluster-graph" role="img" aria-label="Cluster map"></svg>
+								</div>
+								<p class="preview-label" style="margin-top:1rem">Cluster Similarity Matrix</p>
+								<div class="confusion-matrix"></div>
+							</div>
+							<div style="width:300px;">
+								<p class="preview-label">Cluster Summary Tags</p>
+								<div class="cluster-tags"></div>
 							</div>
 						</div>
 
@@ -417,11 +447,94 @@ async function executeStage4_ClusterAssignment(vectorResult) {
 			pipelineStages.innerHTML += stageHTML;
 			updateProgress(4);
 
+			// Render returned visualizations and tags
+			setTimeout(() => {
+				const svg = document.querySelector('.cluster-graph');
+				const tagsContainer = document.querySelector('.cluster-tags');
+				const matrixContainer = document.querySelector('.confusion-matrix');
+				const assignedIndex = Math.max(0, (parseInt(data.cluster) % clustersCount));
+
+				renderClusterGraph(svg, clustersCount, assignedIndex);
+				const tags = data.cluster_tags || generateClusterTags(clustersCount);
+				renderClusterTags(tagsContainer, tags, assignedIndex);
+				renderConfusionMatrix(matrixContainer, clustersCount, assignedIndex);
+			}, 80);
+
 			resolve({
-				clusterNumber,
-				confidence: parseFloat(confidence)
+				clusterNumber: parseInt(data.cluster) + 1,
+				confidence: parseFloat(confidence),
+				recommendations: data.recommendations || []
 			});
-		}, 800);
+		} catch (err) {
+			// fallback to mock behavior if API fails
+			console.error('Cluster API error:', err);
+			showToast('Cluster API unavailable — showing demo results', 'error');
+			setTimeout(() => {
+				const clusterNumber = Math.floor(Math.random() * 12) + 1;
+				const confidence = (60 + Math.random() * 35).toFixed(1);
+				const clustersCount = 12;
+				const assignedIndex = Math.max(0, (clusterNumber - 1) % clustersCount);
+				const stageHTML = `
+					<div class="pipeline-stage" style="animation-delay: 0.3s">
+						<div class="stage-header">
+							<div class="stage-number">4</div>
+							<div>
+								<h2 class="stage-title">Unsupervised Cluster Detection</h2>
+								<p class="stage-description">K-means clustering with K=${clustersCount}</p>
+							</div>
+						</div>
+						<div class="stage-content">
+							<div class="cluster-info">
+								<p style="font-size: 0.85rem; color: var(--ink-700); margin-bottom: 0.5rem;">Assigned Cluster</p>
+								<p class="cluster-number">${clusterNumber}</p>
+								<p class="cluster-label">Cluster ID from trained K-means model (K=${clustersCount})</p>
+
+								<p class="confidence-indicator">
+									<strong>Cluster Similarity Score</strong><br>
+									${confidence}% match with cluster center
+								</p>
+								<div class="confidence-bar">
+									<div class="confidence-fill" style="width: ${confidence}%"></div>
+								</div>
+							</div>
+
+							<div class="cluster-visual-row" style="display:flex; gap:1rem; margin-top:1rem; flex-wrap:wrap; align-items:flex-start;">
+								<div style="flex:2; min-width:360px;">
+									<p class="preview-label">Cluster Map</p>
+									<div style="padding:8px;">
+										<svg class="cluster-graph" role="img" aria-label="Cluster map"></svg>
+									</div>
+									<p class="preview-label" style="margin-top:1rem">Cluster Similarity Matrix</p>
+									<div class="confusion-matrix"></div>
+								</div>
+								<div style="width:300px;">
+									<p class="preview-label">Cluster Summary Tags</p>
+									<div class="cluster-tags"></div>
+								</div>
+							</div>
+
+							<div style="margin-top: 1.5rem; padding: 1rem; background: rgba(35, 76, 106, 0.06); border-radius: 0.75rem; border-left: 3px solid var(--accent-color);">
+								<p style="font-size: 0.9rem; color: var(--ink-700); line-height: 1.6; margin: 0;">
+									<strong>Interpretation:</strong> The lyrics were grouped with songs sharing similar structural patterns, including comparable lexical diversity, repetition scores, and emotional content. This cluster represents a specific lyrical style or mood category.
+								</p>
+							</div>
+						</div>
+					</div>
+				`;
+				pipelineStages.innerHTML += stageHTML;
+				updateProgress(4);
+
+				setTimeout(() => {
+					const svg = document.querySelector('.cluster-graph');
+					const tagsContainer = document.querySelector('.cluster-tags');
+					const matrixContainer = document.querySelector('.confusion-matrix');
+					renderClusterGraph(svg, clustersCount, assignedIndex);
+					renderClusterTags(tagsContainer, generateClusterTags(clustersCount), assignedIndex);
+					renderConfusionMatrix(matrixContainer, clustersCount, assignedIndex);
+				}, 80);
+				resolve({ clusterNumber, confidence, recommendations: [] });
+			}, 400);
+		}
 	});
 }
 
@@ -434,45 +547,16 @@ async function executeStage5_Recommendations(clusterResult) {
 
 	return new Promise((resolve) => {
 		setTimeout(() => {
-			// Mock recommendations
-			const recommendations = [
-				{
-					title: 'Fix You',
-					artist: 'Coldplay',
-					similarity: (75 + Math.random() * 20).toFixed(1),
-					features: 'Similar emotional density and line structure'
-				},
-				{
-					title: 'Let Her Go',
-					artist: 'Passenger',
-					similarity: (72 + Math.random() * 20).toFixed(1),
-					features: 'High lexical diversity, introspective mood'
-				},
-				{
-					title: 'Halo',
-					artist: 'Beyoncé',
-					similarity: (70 + Math.random() * 20).toFixed(1),
-					features: 'Comparable repetition score and word count'
-				},
-				{
-					title: 'Rolling in the Deep',
-					artist: 'Adele',
-					similarity: (68 + Math.random() * 20).toFixed(1),
-					features: 'Similar cluster characteristics'
-				},
-				{
-					title: 'Someone Like You',
-					artist: 'Adele',
-					similarity: (65 + Math.random() * 20).toFixed(1),
-					features: 'Matching emotional word patterns'
-				},
-				{
-					title: 'The Night We Met',
-					artist: 'Lord Huron',
-					similarity: (63 + Math.random() * 20).toFixed(1),
-					features: 'Narrative structure similarity'
-				}
-			];
+			const recommendations = (clusterResult && clusterResult.recommendations && clusterResult.recommendations.length)
+				? clusterResult.recommendations
+				: [
+					{ title: 'Fix You', artist: 'Coldplay', similarity: 91.4, features: 'Similar emotional density and line structure' },
+					{ title: 'Let Her Go', artist: 'Passenger', similarity: 87.5, features: 'High lexical diversity, introspective mood' },
+					{ title: 'Halo', artist: 'Beyoncé', similarity: 82.7, features: 'Comparable repetition score and word count' },
+					{ title: 'Rolling in the Deep', artist: 'Adele', similarity: 83.7, features: 'Similar cluster characteristics' },
+					{ title: 'Someone Like You', artist: 'Adele', similarity: 67.4, features: 'Matching emotional word patterns' },
+					{ title: 'The Night We Met', artist: 'Lord Huron', similarity: 71.2, features: 'Narrative structure similarity' },
+				];
 
 			let recCardsHTML = recommendations.map(rec => `
 				<div class="recommendation-card">
@@ -483,9 +567,9 @@ async function executeStage5_Recommendations(clusterResult) {
 							<p class="rec-artist">${escapeHtml(rec.artist)}</p>
 						</div>
 					</div>
-					<div class="rec-similarity">${rec.similarity}% Match</div>
+					<div class="rec-similarity">${escapeHtml((rec.similarity || rec.similarity_pct || Math.round((1 - (rec.distance || 1)) * 100)) + '% Match')}</div>
 					<div class="rec-features">
-						${escapeHtml(rec.features)}
+						${escapeHtml(rec.features || '')}
 					</div>
 				</div>
 			`).join('');
@@ -643,4 +727,199 @@ function escapeHtml(str) {
 		'"': '&quot;',
 		"'": '&#39;'
 	}[c]));
+}
+
+// -----------------------------
+// Helper visualizations (frontend placeholders)
+// -----------------------------
+
+function seededRandom(seed) {
+	let s = seed % 2147483647;
+	if (s <= 0) s += 2147483646;
+	return function() {
+		s = (s * 16807) % 2147483647;
+		return (s - 1) / 2147483646;
+	};
+}
+
+function renderClusterGraph(svgEl, clustersCount, assignedIndex) {
+	if (!svgEl) return;
+	while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+	const svgNS = 'http://www.w3.org/2000/svg';
+
+	// Use a fixed logical coordinate system for stability
+	const W = 900, H = 420;
+	svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+	svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+	const cx = W / 2, cy = H / 2;
+	const radius = Math.min(W, H) * 0.32;
+
+	// background
+	const bg = document.createElementNS(svgNS, 'rect');
+	bg.setAttribute('x', 0);
+	bg.setAttribute('y', 0);
+	bg.setAttribute('width', W);
+	bg.setAttribute('height', H);
+	bg.setAttribute('fill', 'transparent');
+	svgEl.appendChild(bg);
+
+	for (let i = 0; i < clustersCount; i++) {
+		const theta = (i / clustersCount) * Math.PI * 2;
+		const centerX = cx + Math.cos(theta) * radius;
+		const centerY = cy + Math.sin(theta) * radius * 0.6;
+
+		// cluster center marker (larger for visibility)
+		const center = document.createElementNS(svgNS, 'circle');
+		center.setAttribute('cx', centerX);
+		center.setAttribute('cy', centerY);
+		center.setAttribute('r', i === assignedIndex ? 14 : 8);
+		center.setAttribute('fill', i === assignedIndex ? 'var(--accent-color)' : 'rgba(35,76,106,0.08)');
+		center.setAttribute('stroke', i === assignedIndex ? 'var(--accent-color)' : 'rgba(35,76,106,0.12)');
+		center.setAttribute('opacity', i === assignedIndex ? '1' : '0.95');
+		svgEl.appendChild(center);
+
+		// label near center
+		const label = document.createElementNS(svgNS, 'text');
+		label.setAttribute('x', centerX + (i === assignedIndex ? 22 : 14));
+		label.setAttribute('y', centerY + 6);
+		label.setAttribute('fill', i === assignedIndex ? 'var(--ink-900)' : 'var(--ink-700)');
+		label.setAttribute('font-size', i === assignedIndex ? '14' : '11');
+		label.setAttribute('font-weight', i === assignedIndex ? '700' : '600');
+		label.setAttribute('dominant-baseline', 'middle');
+		label.setAttribute('text-anchor', 'start');
+		label.textContent = `${i+1}`;
+		svgEl.appendChild(label);
+
+		// small nodes around center (denser for selected cluster)
+		const rnd = seededRandom(i + 3);
+		const nodes = i === assignedIndex ? 18 : 6;
+		for (let j = 0; j < nodes; j++) {
+			const angle = rnd() * Math.PI * 2;
+			const r = (i === assignedIndex ? 20 + rnd() * 60 : 10 + rnd() * 26);
+			const x = centerX + Math.cos(angle) * r;
+			const y = centerY + Math.sin(angle) * r * (0.9 + rnd()*0.2);
+			const node = document.createElementNS(svgNS, 'circle');
+			node.setAttribute('cx', x);
+			node.setAttribute('cy', y);
+			node.setAttribute('r', i === assignedIndex && j === 0 ? 7 : (i === assignedIndex ? 3.8 : 2.8));
+			node.setAttribute('fill', i === assignedIndex && j === 0 ? 'var(--success-color)' : 'rgba(35,76,106,0.12)');
+			node.setAttribute('opacity', '0.98');
+			svgEl.appendChild(node);
+		}
+	}
+
+	// legend for highlighted node
+	const legendRect = document.createElementNS(svgNS, 'rect');
+	legendRect.setAttribute('x', 18);
+	legendRect.setAttribute('y', 14);
+	legendRect.setAttribute('width', 12);
+	legendRect.setAttribute('height', 12);
+	legendRect.setAttribute('fill', 'var(--success-color)');
+	svgEl.appendChild(legendRect);
+	const ltext = document.createElementNS(svgNS, 'text');
+	ltext.setAttribute('x', 36);
+	ltext.setAttribute('y', 24);
+	ltext.setAttribute('fill', 'var(--ink-700)');
+	ltext.setAttribute('font-size', '12');
+	ltext.setAttribute('dominant-baseline', 'middle');
+	ltext.textContent = 'Current lyrics (highlighted)';
+	svgEl.appendChild(ltext);
+}
+
+function generateClusterTags(n) {
+	const tags = ['Emotional','Narrative','Repetitive','Minimalist','Melodic','Rhythmic','Storytelling','Abstract','Romantic','Reflective'];
+	const desc = [
+		'Emotional and introspective',
+		'Story-driven lyrics',
+		'Repetitive hooks and choruses',
+		'Sparse, minimal lines',
+		'Melodic phrasing emphasis',
+		'Rhythmic phrasing, short lines',
+		'Narrative arc and characters',
+		'Abstract imagery and metaphors',
+		'Romantic themes and longing',
+		'Reflective, quiet storytelling'
+	];
+	const out = [];
+	for (let i = 0; i < n; i++) {
+		out.push({ tag: tags[i % tags.length], desc: desc[i % desc.length] });
+	}
+	return out;
+}
+
+function renderClusterTags(container, tags, assignedIndex) {
+	if (!container) return;
+	container.innerHTML = '';
+	// Selected tag at top with description
+	tags.forEach((t, i) => {
+		const div = document.createElement('div');
+		if (i === assignedIndex) {
+			div.className = 'stat-card selected-tag';
+			div.style.marginBottom = '0.8rem';
+			div.innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between;"><div style=\"font-weight:800; font-size:1.05rem\">${i+1}. ${escapeHtml(t.tag)}</div><div style=\"color:var(--accent-color); font-weight:700\">Cluster ${i+1}</div></div><div style=\"color:var(--ink-700); font-size:0.95rem; margin-top:0.6rem\">${escapeHtml(t.desc)}</div>`;
+		} else {
+			div.className = 'stat-card small-tag';
+			div.style.marginBottom = '0.45rem';
+			div.innerHTML = `<div style="font-weight:700;">${i+1}. ${escapeHtml(t.tag)}</div>`;
+		}
+		container.appendChild(div);
+	});
+}
+
+function renderConfusionMatrix(container, clustersCount, assignedIndex) {
+	if (!container) return;
+	container.innerHTML = '';
+	const size = Math.min(8, clustersCount);
+	const rnd = seededRandom(197 + assignedIndex);
+
+	// Header
+	const legendWrap = document.createElement('div');
+	legendWrap.style.display = 'flex';
+	legendWrap.style.justifyContent = 'space-between';
+	legendWrap.style.alignItems = 'center';
+	legendWrap.style.marginBottom = '8px';
+	const title = document.createElement('div');
+	title.textContent = 'Cluster Similarity Matrix';
+	title.style.fontWeight = '700';
+	title.style.color = 'var(--ink-800)';
+	title.style.fontSize = '0.95rem';
+	legendWrap.appendChild(title);
+	container.appendChild(legendWrap);
+
+	const gridWrap = document.createElement('div');
+	gridWrap.style.display = 'grid';
+	gridWrap.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+	gridWrap.style.gap = '8px';
+
+	for (let r = 0; r < size; r++) {
+		for (let c = 0; c < size; c++) {
+			const v = Math.round(10 + rnd() * 90);
+			const cell = document.createElement('div');
+			cell.style.height = '36px';
+			cell.style.borderRadius = '8px';
+			cell.style.display = 'flex';
+			cell.style.alignItems = 'center';
+			cell.style.justifyContent = 'center';
+			cell.style.fontSize = '12px';
+			cell.style.color = 'white';
+			const alpha = 0.12 + (v / 100) * 0.6;
+			cell.style.background = `linear-gradient(90deg, rgba(14,165,233,${alpha}), rgba(14,165,233,${Math.min(alpha+0.12,0.45)}))`;
+			if (r === assignedIndex % size && c === assignedIndex % size) {
+				cell.style.boxShadow = 'inset 0 0 0 3px rgba(14,165,233,0.22)';
+				cell.style.border = '1px solid rgba(14,165,233,0.18)';
+			}
+			cell.textContent = v + '%';
+			gridWrap.appendChild(cell);
+		}
+	}
+	container.appendChild(gridWrap);
+
+	// Small note below
+	const note = document.createElement('div');
+	note.style.marginTop = '8px';
+	note.style.fontSize = '0.82rem';
+	note.style.color = 'var(--ink-700)';
+	note.textContent = 'Darker values indicate higher similarity to the selected cluster.';
+	container.appendChild(note);
 }

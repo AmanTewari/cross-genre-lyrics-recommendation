@@ -405,6 +405,87 @@ body{
 	transition: width 0.4s ease;
 }
 
+/* Cluster visual extras */
+.cluster-visual-row .cluster-graph{
+	background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));
+	border-radius: 0.5rem;
+	border: 1px solid var(--line-soft);
+	padding: 0; /* svg should not have internal padding to keep coordinates stable */
+}
+
+.confusion-matrix{
+	margin-top: 0.5rem;
+}
+
+.confusion-matrix > div{
+	width: 100%;
+}
+
+.cluster-tags .stat-card{
+	background: transparent;
+	border: 1px solid rgba(69,104,130,0.06);
+	padding: 0.75rem;
+}
+
+.cluster-tags .stat-card:first-child{
+	border-color: var(--accent-color);
+}
+
+/* Emphasize the main cluster map and similarity matrix */
+.cluster-visual-row > div:first-child{
+	display:flex;
+	flex-direction:column;
+	padding: 10px; /* container padding instead of svg padding */
+	box-sizing: border-box;
+}
+
+.cluster-graph{
+	width:100%;
+	height:420px;
+	display:block;
+	border-radius:0.6rem;
+}
+
+.confusion-matrix{
+	background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.86));
+	padding: 0.85rem;
+	border-radius: 0.6rem;
+	border: 1px solid var(--line-soft);
+	margin-top: 0.6rem;
+}
+
+.cluster-tags{
+	max-height: calc(420px - 40px);
+	overflow-y: auto;
+	padding-left: 0.2rem;
+}
+
+.cluster-tags .selected-tag{
+	background: linear-gradient(180deg, rgba(14,165,233,0.04), rgba(14,165,233,0.02));
+	border: 1px solid rgba(14,165,233,0.18);
+	padding: 0.9rem;
+}
+
+.cluster-tags .small-tag{
+	background: transparent;
+	border: none;
+	padding: 0.5rem 0.25rem;
+	color: var(--ink-700);
+	font-size: 0.95rem;
+}
+
+.cluster-tags .small-tag:hover{
+	background: rgba(35,76,106,0.02);
+}
+
+/* make the focus on the map by reducing other card shadows */
+.pipeline-stage .recommendations-grid,
+.pipeline-stage .features-grid,
+.pipeline-stage .stat-grid{
+	opacity: 0.95;
+}
+
+
 /* ============= RECOMMENDATION CARDS ============= */
 .recommendations-grid{
 	display: grid;
