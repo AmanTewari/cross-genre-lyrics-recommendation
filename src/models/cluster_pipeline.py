@@ -97,7 +97,7 @@ def compute_elbow_and_silhouette(
     sample_size = min(silhouette_sample_size, len(X_scaled))
 
     for k in k_range:
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=50)
         labels = kmeans.fit_predict(X_scaled)
         inertia_values.append(float(kmeans.inertia_))
         score = silhouette_score(
@@ -136,7 +136,7 @@ def save_plots(k_range: range, inertia_values: list[float], silhouette_scores: l
 
 
 def fit_final_model(X_scaled: np.ndarray, optimal_k: int) -> tuple[KMeans, np.ndarray]:
-    kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
+    kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=50)
     labels = kmeans.fit_predict(X_scaled)
     return kmeans, labels
 
@@ -168,7 +168,7 @@ def train_pipeline(feature_matrix_path: Path | None = None) -> dict[str, object]
     training_indices = deterministic_sample_indices(len(X_scaled), TRAINING_SAMPLE_SIZE)
     X_train = X_scaled[training_indices]
 
-    k_range = range(2, min(16, len(feature_matrix)))
+    k_range = range(2, min(25, len(feature_matrix)))
     if len(k_range) < 2:
         raise ValueError("Need at least 2 rows to determine K.")
 

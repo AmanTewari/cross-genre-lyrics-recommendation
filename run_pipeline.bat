@@ -1,46 +1,68 @@
 @echo off
+setlocal enabledelayedexpansion
+
+REM Get the directory where this batch file is located (project root)
+set PROJECT_ROOT=%~dp0
+
+REM Change to project root
+cd /d "%PROJECT_ROOT%"
 
 echo ======================================
 echo LYRICS RECOMMENDATION PIPELINE START
 echo ======================================
+echo Project root: %PROJECT_ROOT%
+echo.
 
-IF EXIST .venv\Scripts\activate.bat (
+REM Activate virtual environment
+if exist ".venv\Scripts\activate.bat" (
     call .venv\Scripts\activate.bat
-) ELSE IF EXIST venv\Scripts\activate.bat (
+) else if exist "venv\Scripts\activate.bat" (
     call venv\Scripts\activate.bat
+) else (
+    echo Warning: Virtual environment not found
 )
 
-set SKIP_STEPS=
+echo.
 
-call :prompt_skip "Step 1 - Preprocessing" pipeline\run_step1.py
-call :prompt_skip "Step 2 - Feature extraction" pipeline\run_step2.py
-call :prompt_skip "Step 3 - Clustering" pipeline\run_step3.py
-call :prompt_skip "Step 4 - Recommendation checks" pipeline\run_step4.py
-call :prompt_skip "Step 5 - Validation" pipeline\run_step5.py
+REM Initialize skip list
+set SKIP_LIST=
 
-    if defined SKIP_STEPS (
-    echo Skipping: %SKIP_STEPS%
-    python pipeline\main_pipeline.py --skip %SKIP_STEPS%
+REM Prompt for each step
+call :prompt_step "Step 1 - Preprocessing" 1
+call :prompt_step "Step 2 - Feature extraction" 2
+call :prompt_step "Step 3 - Clustering" 3
+call :prompt_step "Step 4 - Recommendation checks" 4
+call :prompt_step "Step 5 - Validation" 5
+
+REM Run pipeline with skips
+if defined SKIP_LIST (
+    echo.
+    echo Running pipeline with skips: %SKIP_LIST%
+    echo.
+    python pipeline\main_pipeline.py --skip %SKIP_LIST%
 ) else (
+    echo.
+    echo Running full pipeline...
+    echo.
     python pipeline\main_pipeline.py
 )
 
-echo ======================================
-echo PIPELINE COMPLETE
-echo ======================================
+if errorlevel 1 (
+    echo.
+    echo ERROR: Pipeline failed!
+    echo.
+) else (
+    echo.
+    echo SUCCESS: Pipeline completed!
+    echo.
+)
 
 pause
+exit /b
 
-goto :eof
-
-:prompt_skip
-set USER_INPUT=
-set /p USER_INPUT=%~1 ^(press Enter to run, type skip to skip^): 
-if /I "%USER_INPUT%"=="skip" (
-    if defined SKIP_STEPS (
-        set SKIP_STEPS=%SKIP_STEPS% %~2
-    ) else (
-        set SKIP_STEPS=%~2
-    )
+:prompt_step
+set /p USER_INPUT=%~1 (press Enter to run, type 'skip' to skip): 
+if /i "!USER_INPUT!"=="skip" (
+    set SKIP_LIST=!SKIP_LIST! %~2
 )
 exit /b
