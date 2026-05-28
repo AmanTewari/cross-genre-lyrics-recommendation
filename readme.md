@@ -231,7 +231,7 @@ This project demonstrates the application of pattern recognition and unsupervise
 
 ## License
 
-This project is developed for academic purposes as part of a Minor Project submission.
+refer to License.md 
 
 ---
 
