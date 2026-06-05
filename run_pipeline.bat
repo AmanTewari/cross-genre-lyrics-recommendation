@@ -66,3 +66,12 @@ if /i "!USER_INPUT!"=="skip" (
     set SKIP_LIST=!SKIP_LIST! %~2
 )
 exit /b
+
+
+
+i have an appointment with them today sir, and i need the following details:
+Company Name:
+Contact Person:
+Contact Number:
+Email Address:
+and offer letter if possible.

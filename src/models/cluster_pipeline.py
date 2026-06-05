@@ -295,5 +295,4 @@ def main() -> None:
     train_pipeline()
 
 
-if __name__ == "__main__":
-    run()
+if __name__ == "__main__": run()
